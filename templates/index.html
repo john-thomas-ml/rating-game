@@ -8,7 +8,6 @@
 </head>
 <body>
   <div class="container">
-    <!-- Upload Section (Left Side) -->
     <div class="upload-section">
       <h2>Upload Your Image</h2>
       <form id="uploadForm">
@@ -19,7 +18,6 @@
       <p id="uploadMessage"></p>
     </div>
 
-    <!-- Main Rating Section (Center) -->
     <div class="main-section">
       {% if no_images %}
         <p>No images found in the database. Please upload an image.</p>
@@ -27,7 +25,6 @@
         <h1 id="imageTitle">{{ image.name }}</h1>
         <img id="mainImage" src="/image/{{ image._id }}" alt="Rating Image">
         <div class="rating-buttons">
-          <!-- Rating buttons from 1 to 10 -->
           <button onclick="rateImage(1)">1</button>
           <button onclick="rateImage(2)">2</button>
           <button onclick="rateImage(3)">3</button>
@@ -44,7 +41,6 @@
       {% endif %}
     </div>
 
-    <!-- Highest Ratings Section (Right Side) -->
     <div class="ranking-section">
       <h2>Highest Ratings</h2>
       <ul id="rankingList">
