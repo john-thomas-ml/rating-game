@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Rating Game</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <!-- Upload Section (Left Side) -->
+    <div class="upload-section">
+      <h2>Upload Your Image</h2>
+      <form id="uploadForm">
+          <input type="text" id="imageName" name="imageName" placeholder="Enter image name" required />
+          <input type="file" id="imageFile" name="imageFile" accept=".png,.jpg,.jpeg" required />
+          <button type="submit">Submit</button>
+      </form>
+      <p id="uploadMessage"></p>
+    </div>
+
+    <!-- Main Rating Section (Center) -->
+    <div class="main-section">
+      {% if no_images %}
+        <p>No images found in the database. Please upload an image.</p>
+      {% else %}
+        <h1 id="imageTitle">{{ image.name }}</h1>
+        <img id="mainImage" src="/image/{{ image._id }}" alt="Rating Image">
+        <div class="rating-buttons">
+          <!-- Rating buttons from 1 to 10 -->
+          <button onclick="rateImage(1)">1</button>
+          <button onclick="rateImage(2)">2</button>
+          <button onclick="rateImage(3)">3</button>
+          <button onclick="rateImage(4)">4</button>
+          <button onclick="rateImage(5)">5</button>
+          <button onclick="rateImage(6)">6</button>
+          <button onclick="rateImage(7)">7</button>
+          <button onclick="rateImage(8)">8</button>
+          <button onclick="rateImage(9)">9</button>
+          <button onclick="rateImage(10)">10</button>
+        </div>
+        <p class="rate-title">Rate This Look!</p>
+        <p id="ratingMessage"></p>
+      {% endif %}
+    </div>
+
+    <!-- Highest Ratings Section (Right Side) -->
+    <div class="ranking-section">
+      <h2>Highest Ratings</h2>
+      <ul id="rankingList">
+        {% for image in top_rated_images %}
+        <li>
+          <img src="/image/{{ image._id }}" alt="{{ image.name }}" class="thumbnail">
+          <span>{{ image.name }} - {{ image.rating | round(1) }}</span>
+        </li>
+        {% else %}
+        <li>No top-rated images available.</li>
+        {% endfor %}
+      </ul>
+      <button onclick="window.location.href='/all-ratings'">See All</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

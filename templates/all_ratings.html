@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Ratings</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Back to Main Page Button -->
+    <a href="/" class="back-button" style="position: absolute; top: 20px; right: 20px;">Back to Main Page</a>
+    
+    <div class="all-ratings-container">
+        <!-- Centered Title -->
+        <h2 class="all-ratings-title">All Ratings</h2>
+        
+        <!-- Ratings Box -->
+        <div class="ranking-section">
+            <ul class="all-ratings-list">
+                {% for image in images %}
+                    <li>
+                        <img src="/image/{{ image.id }}" alt="{{ image.name }}" class="thumbnail">
+                        <span>{{ image.name }} - {{ image.rating|round(1) }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
