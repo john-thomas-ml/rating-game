@@ -3,22 +3,21 @@ import logging
 from flask import Flask, render_template, request, jsonify, make_response
 from pymongo import MongoClient, errors
 from bson import ObjectId, binary
-from io import BytesIO
 from time import sleep
 
 app = Flask(__name__)
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_mongo_client(uri, retries=5, delay=2):
-    for attempt in range(retries):
+    for attempt in range(1, retries + 1):
         try:
             client = MongoClient(uri, serverSelectionTimeoutMS=5000)
             client.admin.command('ping')  # Test the connection
             logging.info("Connected to MongoDB successfully.")
             return client
         except errors.ConnectionFailure as e:
-            logging.warning(f"MongoDB connection failed: {e}. Retrying in {delay} seconds...")
+            logging.warning(f"MongoDB connection failed on attempt {attempt}: {e}. Retrying in {delay} seconds...")
             sleep(delay)
     logging.error("Failed to connect to MongoDB after multiple attempts.")
     raise errors.ConnectionFailure("Could not connect to MongoDB.")
@@ -42,7 +41,7 @@ def index():
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
         return render_template("index.html", image=image, top_rated_images=top_rated_images, no_images=not bool(image))
     except Exception as e:
-        logging.error(f"Error fetching images: {e}")
+        logging.error(f"Error fetching images for index page: {e}")
         return render_template("index.html", error="Unable to load images at the moment.")
 
 @app.route('/upload', methods=['POST'])
@@ -50,8 +49,12 @@ def upload_image():
     try:
         image_name = request.form.get('imageName')
         image_file = request.files.get('imageFile')
+
+        if not image_name or not image_file:
+            logging.warning("Image upload failed: Missing image name or file.")
+            return jsonify({"error": "Image name and file are required"}), 400
+
         image_data = binary.Binary(image_file.read())
-        
         image_doc = {
             "name": image_name,
             "image_data": image_data,
@@ -59,6 +62,7 @@ def upload_image():
             "rating_count": 0
         }
         images_collection.insert_one(image_doc)
+        logging.info(f"Image '{image_name}' uploaded successfully.")
         return jsonify({"message": "Image uploaded successfully!"})
     except Exception as e:
         logging.error(f"Error uploading image: {e}")
@@ -77,9 +81,13 @@ def get_top_rated():
 @app.route('/rate', methods=['POST'])
 def rate_image():
     data = request.json
-    image_id = data['image_id']
-    rating = data['rating']
-    
+    image_id = data.get('image_id')
+    rating = data.get('rating')
+
+    if image_id is None or rating is None:
+        logging.warning("Rating failed: Missing image ID or rating.")
+        return jsonify({"error": "Image ID and rating are required"}), 400
+
     try:
         image = images_collection.find_one({"_id": ObjectId(image_id)})
         if image:
@@ -91,7 +99,9 @@ def rate_image():
                 {"_id": ObjectId(image_id)},
                 {"$set": {"rating": new_average_rating, "rating_count": new_rating_count}}
             )
+            logging.info(f"Image ID '{image_id}' rated successfully with rating {rating}.")
             return jsonify({"message": "Rating submitted successfully!"})
+        logging.warning(f"Rating failed: Image with ID '{image_id}' not found.")
         return jsonify({"error": "Image not found"}), 404
     except Exception as e:
         logging.error(f"Error rating image: {e}")
@@ -117,7 +127,7 @@ def serve_image(image_id):
             response = make_response(image_data)
             response.headers.set('Content-Type', 'image/jpeg')
             return response
-        logging.warning("Image not found or no data available.")
+        logging.warning(f"Image with ID '{image_id}' not found.")
     except Exception as e:
         logging.error(f"Error in serve_image: {e}")
     return "Image not found", 404
