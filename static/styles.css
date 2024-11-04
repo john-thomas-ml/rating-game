@@ -1,4 +1,3 @@
-/* Basic reset */
 * {
   margin: 0;
   padding: 0;
@@ -11,8 +10,8 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #1c1c1e; /* Dark background */
-  color: #f8f8f8; /* Light text color */
+  background-color: #1c1c1e;
+  color: #f8f8f8; 
 }
 
 .container {
@@ -21,8 +20,6 @@ body {
   width: 90%;
 }
 
-/* Sections */
-/* Adjusted Upload Section styling */
 .upload-section {
   width: 250px;
   padding: 20px;
@@ -35,7 +32,6 @@ body {
   color: #f8f8f8;
 }
 
-/* Upload form adjustments */
 .upload-section input[type="text"],
 .upload-section input[type="file"] {
   width: 100%;
@@ -54,7 +50,7 @@ body {
 .upload-section button[type="submit"] {
   margin-top: 12px;
   padding: 10px 15px;
-  width: 100%; /* Make button full width */
+  width: 100%;
   border: none;
   border-radius: 5px;
   background: linear-gradient(to bottom right, #ff6f61, #ff3b2e);
@@ -68,7 +64,6 @@ body {
   background-color: #ff3b2e;
 }
 
-/* Adjusting text alignment for heading */
 .upload-section h2 {
   text-align: center;
   color: #ff6f61;
@@ -82,22 +77,19 @@ body {
   text-align: center;
 }
 
-/* Headings */
 h1, h2 {
   color: #ff6f61;
   margin-bottom: 10px;
 }
 
-/* Image styling */
 #mainImage {
   width: 300px;
   height: 300px;
   border-radius: 10px;
   margin: 10px 0;
-  border: 5px solid #f8f8f8; /* White border for contrast */
+  border: 5px solid #f8f8f8;
 }
 
-/* Rating buttons */
 .rating-buttons {
   margin-top: 20px;
 }
@@ -129,7 +121,6 @@ h1, h2 {
   font-weight: bold;
 }
 
-/* Submit and See All buttons */
 button[type="submit"],
 .ranking-section button {
   padding: 10px 15px;
@@ -151,7 +142,7 @@ ul {
   list-style: none;
 }
 
-/* Ranking and All Ratings list styling */
+
 #rankingList li, .all-ratings-list li {
   display: flex;
   align-items: center;
@@ -167,7 +158,6 @@ ul {
   border: 2px solid #ff6f61;
 }
 
-/* Centering for All Ratings */
 .all-ratings-container {
   display: flex;
   flex-direction: column;
@@ -220,7 +210,6 @@ ul {
   margin-bottom: 10px;
 }
 
-/* Thumbnail styling in .ranking-section and other lists */
 .thumbnail {
   width: 30px;
   height: 30px;
@@ -229,8 +218,4 @@ ul {
   border: 2px solid #ff6f61;
 }
 
-
-
-
-/* Other styles omitted for brevity */
 
