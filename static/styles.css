@@ -30,6 +30,7 @@ body {
   flex-direction: column;
   align-items: center;
   color: #f8f8f8;
+  height: 250px;
 }
 
 .upload-section input[type="text"],
@@ -71,10 +72,13 @@ body {
   margin-bottom: 10px;
 }
 
-
 .main-section {
   flex: 1;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 h1, h2 {
@@ -141,7 +145,6 @@ button[type="submit"]:hover,
 ul {
   list-style: none;
 }
-
 
 #rankingList li, .all-ratings-list li {
   display: flex;
@@ -217,5 +220,3 @@ ul {
   object-fit: cover;
   border: 2px solid #ff6f61;
 }
-
-

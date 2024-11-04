@@ -13,7 +13,7 @@ def get_mongo_client(uri, retries=5, delay=2):
     for attempt in range(1, retries + 1):
         try:
             client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-            client.admin.command('ping')  # Test the connection
+            client.admin.command('ping')
             logging.info("Connected to MongoDB successfully.")
             return client
         except errors.ConnectionFailure as e:
@@ -25,6 +25,7 @@ def get_mongo_client(uri, retries=5, delay=2):
 client = get_mongo_client("mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
 db = client["rating_game_db"]
 images_collection = db["images"]
+user_ratings_collection = db["user_ratings"]
 
 def format_image(image):
     return {
@@ -34,15 +35,27 @@ def format_image(image):
         "rating_count": image.get("rating_count", 0)
     }
 
+def get_client_ip():
+    return request.remote_addr
+
 @app.route('/')
 def index():
     try:
         image = images_collection.find_one()
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
+        
         return render_template("index.html", image=image, top_rated_images=top_rated_images, no_images=not bool(image))
     except Exception as e:
         logging.error(f"Error fetching images for index page: {e}")
-        return render_template("index.html", error="Unable to load images at the moment.")
+        return render_template("index.html", error="Unable to load images at the moment.", no_images=True)
+
+@app.route('/top-rated', methods=['GET'])
+def get_top_rated():
+    top_images = list(images_collection.find().sort("rating", -1).limit(10))
+    if not top_images:
+        return jsonify([]) 
+    formatted_images = [format_image(img) for img in top_images]
+    return jsonify(formatted_images)
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -68,21 +81,12 @@ def upload_image():
         logging.error(f"Error uploading image: {e}")
         return jsonify({"error": "Failed to upload image"}), 500
 
-@app.route('/top-rated', methods=['GET'])
-def get_top_rated():
-    try:
-        top_images = images_collection.find().sort("rating", -1).limit(10)
-        formatted_images = [format_image(img) for img in top_images]
-        return jsonify(formatted_images)
-    except Exception as e:
-        logging.error(f"Error fetching top-rated images: {e}")
-        return jsonify({"error": "Failed to retrieve top-rated images"}), 500
-
 @app.route('/rate', methods=['POST'])
 def rate_image():
     data = request.json
     image_id = data.get('image_id')
     rating = data.get('rating')
+    user_ip = get_client_ip()
 
     if image_id is None or rating is None:
         logging.warning("Rating failed: Missing image ID or rating.")
@@ -99,8 +103,16 @@ def rate_image():
                 {"_id": ObjectId(image_id)},
                 {"$set": {"rating": new_average_rating, "rating_count": new_rating_count}}
             )
-            logging.info(f"Image ID '{image_id}' rated successfully with rating {rating}.")
+            
+            user_ratings_collection.update_one(
+                {"ip": user_ip},
+                {"$addToSet": {"rated_images": ObjectId(image_id)}},
+                upsert=True
+            )
+
+            logging.info(f"User with IP '{user_ip}' rated image ID '{image_id}' successfully with rating {rating}.")
             return jsonify({"message": "Rating submitted successfully!"})
+        
         logging.warning(f"Rating failed: Image with ID '{image_id}' not found.")
         return jsonify({"error": "Image not found"}), 404
     except Exception as e:
@@ -131,6 +143,16 @@ def serve_image(image_id):
     except Exception as e:
         logging.error(f"Error in serve_image: {e}")
     return "Image not found", 404
+
+@app.route('/unrated-images', methods=['GET'])
+def get_unrated_images():
+    user_ip = get_client_ip()
+    rated_images_doc = user_ratings_collection.find_one({"ip": user_ip})
+    rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
+
+    unrated_images = images_collection.find({"_id": {"$nin": rated_image_ids}})
+    formatted_images = [format_image(img) for img in unrated_images]
+    return jsonify(formatted_images)
 
 if __name__ == '__main__':
     app.run(debug=True)

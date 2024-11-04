@@ -8,22 +8,32 @@
 </head>
 <body>
   <div class="container">
-    <div class="upload-section">
+    <div class="upload-section fixed-size">
       <h2>Upload Your Image</h2>
       <form id="uploadForm">
-          <input type="text" id="imageName" name="imageName" placeholder="Enter image name" required />
-          <input type="file" id="imageFile" name="imageFile" accept=".png,.jpg,.jpeg" required />
-          <button type="submit">Submit</button>
+        <input type="text" id="imageName" name="imageName" placeholder="Enter image name" required />
+        <input type="file" id="imageFile" name="imageFile" accept=".png,.jpg,.jpeg" required />
+        <button type="submit">Submit</button>
       </form>
       <p id="uploadMessage"></p>
     </div>
 
     <div class="main-section">
-      {% if no_images %}
-        <p>No images found in the database. Please upload an image.</p>
-      {% else %}
-        <h1 id="imageTitle">{{ image.name }}</h1>
+      <h1 id="imageTitle">
+        {% if no_images %}
+          No images available
+        {% else %}
+          {{ image.name }}
+        {% endif %}
+      </h1>
+      
+      {% if not no_images %}
         <img id="mainImage" src="/image/{{ image._id }}" alt="Rating Image">
+      {% else %}
+        <img id="mainImage" style="display: none;" alt="Rating Image">
+      {% endif %}
+
+      {% if not no_images %}
         <div class="rating-buttons">
           <button onclick="rateImage(1)">1</button>
           <button onclick="rateImage(2)">2</button>
@@ -37,20 +47,21 @@
           <button onclick="rateImage(10)">10</button>
         </div>
         <p class="rate-title">Rate This Look!</p>
-        <p id="ratingMessage"></p>
       {% endif %}
+
+      <p id="ratingMessage"></p>
     </div>
 
     <div class="ranking-section">
       <h2>Highest Ratings</h2>
       <ul id="rankingList">
         {% for image in top_rated_images %}
-        <li>
-          <img src="/image/{{ image._id }}" alt="{{ image.name }}" class="thumbnail">
-          <span>{{ image.name }} - {{ image.rating | round(1) }}</span>
-        </li>
+          <li>
+            <img src="/image/{{ image._id }}" alt="{{ image.name }}" class="thumbnail">
+            <span>{{ image.name }} - {{ image.rating | round(1) }}</span>
+          </li>
         {% else %}
-        <li>No top-rated images available.</li>
+          <li>No top-rated images available.</li>
         {% endfor %}
       </ul>
       <button onclick="window.location.href='/all-ratings'">See All</button>
