@@ -29,12 +29,13 @@ db = client["rating_game_db"]
 images_collection = db["images"]
 user_ratings_collection = db["user_ratings"]
 
-def format_image(image):
+def format_image(image, is_rated=False):
     return {
         "id": str(image["_id"]),
         "name": image["name"],
         "rating": image.get("rating", 0),
-        "rating_count": image.get("rating_count", 0)
+        "rating_count": image.get("rating_count", 0),
+        "isRated": is_rated
     }
 
 def get_or_create_session_id():
@@ -154,9 +155,14 @@ def get_unrated_images():
     rated_images_doc = user_ratings_collection.find_one({"session_id": session_id})
     rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
 
-    unrated_images = images_collection.find({"_id": {"$nin": rated_image_ids}})
-    formatted_images = [format_image(img) for img in unrated_images]
-    return jsonify(formatted_images)
+    all_images = images_collection.find()
+    images_list = []
+
+    for image in all_images:
+        is_rated = image["_id"] in rated_image_ids
+        images_list.append(format_image(image, is_rated))
+
+    return jsonify(images_list)
 
 if __name__ == '__main__':
     app.run(debug=True)

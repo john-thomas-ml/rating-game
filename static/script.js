@@ -9,6 +9,7 @@ function loadCurrentImage() {
   const imageTitle = document.getElementById("imageTitle");
   const mainImage = document.getElementById("mainImage");
   const ratingMessage = document.getElementById("ratingMessage");
+  const ratingButtons = document.querySelectorAll(".rating-buttons button:not(.skip-button)");
 
   if (!imageTitle || !mainImage || !ratingMessage) {
     console.error("Required elements with IDs 'imageTitle', 'mainImage', or 'ratingMessage' are missing in the HTML.");
@@ -26,6 +27,14 @@ function loadCurrentImage() {
   imageTitle.textContent = currentImage.name;
   mainImage.style.display = "block";
   mainImage.src = `/image/${currentImage.id}`;
+
+  if (currentImage.isRated) {
+    ratingMessage.textContent = "You already rated this image!";
+    ratingButtons.forEach(button => button.disabled = true);
+  } else {
+    ratingMessage.textContent = "";
+    ratingButtons.forEach(button => button.disabled = false);
+  }
 }
 
 function fetchUnratedImages() {
@@ -61,18 +70,12 @@ function rateImage(rating) {
   })
   .then(data => {
     if (data.message) {
-      document.getElementById("ratingMessage").textContent = `You rated ${rating} for ${currentImage.name}`;
-      
-      images.splice(currentIndex, 1);
+      document.getElementById("ratingMessage").textContent = `You rated this image a ${rating}.`;
 
-      if (images.length === 0) {
-        document.getElementById("ratingMessage").textContent = "You've rated all available images!";
-      } else {
-        if (currentIndex >= images.length) {
-          currentIndex = 0; 
-        }
-        loadCurrentImage();
-      }
+      images[currentIndex].isRated = true;
+
+      const ratingButtons = document.querySelectorAll(".rating-buttons button:not(.skip-button)");
+      ratingButtons.forEach(button => button.disabled = true);
 
       fetchTopRatedImages();
     } else {
@@ -132,7 +135,7 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
   const uploadButton = document.querySelector("#uploadForm button[type='submit']");
   const uploadMessage = document.getElementById("uploadMessage");
 
-  uploadButton.disabled = true; 
+  uploadButton.disabled = true;
   uploadMessage.textContent = "Uploading...";
 
   fetch('/upload', {
@@ -150,7 +153,7 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
       setTimeout(() => {
         uploadButton.disabled = false;
         uploadMessage.textContent = "";
-      }, 60000); 
+      }, 60000);
 
       fetchUnratedImages();
     } else {
