@@ -38,7 +38,6 @@ def format_image(image):
     }
 
 def get_or_create_session_id():
-    # Generate a session ID if it doesn't exist
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
     return session['session_id']
@@ -100,15 +99,18 @@ def rate_image():
     try:
         image = images_collection.find_one({"_id": ObjectId(image_id)})
         if image:
+            # Calculate new rating count and average
             new_rating_count = image["rating_count"] + 1
             new_total_rating = image["rating"] * image["rating_count"] + rating
             new_average_rating = new_total_rating / new_rating_count
             
+            # Update image rating and rating count in the collection
             images_collection.update_one(
                 {"_id": ObjectId(image_id)},
                 {"$set": {"rating": new_average_rating, "rating_count": new_rating_count}}
             )
             
+            # Record user's rating to avoid multiple ratings for the same image by the same session
             user_ratings_collection.update_one(
                 {"session_id": session_id},
                 {"$addToSet": {"rated_images": ObjectId(image_id)}},
