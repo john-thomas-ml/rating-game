@@ -83,6 +83,19 @@ function rateImage(rating) {
   .catch(error => console.error('Error submitting rating:', error));
 }
 
+function skipImage() {
+  if (images.length === 0) {
+    document.getElementById("ratingMessage").textContent = "No images available to skip.";
+    return;
+  }
+
+  currentIndex++;
+  if (currentIndex >= images.length) {
+    currentIndex = 0;
+  }
+  loadCurrentImage();
+}
+
 function fetchTopRatedImages() {
   fetch('/top-rated')
     .then(response => {
@@ -119,7 +132,7 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
   const uploadButton = document.querySelector("#uploadForm button[type='submit']");
   const uploadMessage = document.getElementById("uploadMessage");
 
-  uploadButton.disabled = true; // Disable the button initially
+  uploadButton.disabled = true; 
   uploadMessage.textContent = "Uploading...";
 
   fetch('/upload', {
@@ -134,16 +147,15 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
     if (data.message) {
       uploadMessage.textContent = "Image uploaded successfully! Please wait a minute before uploading again.";
 
-      // Start a 60-second cooldown timer
       setTimeout(() => {
         uploadButton.disabled = false;
-        uploadMessage.textContent = ""; // Clear the message after cooldown
-      }, 60000); // Cooldown period in milliseconds (60 seconds)
+        uploadMessage.textContent = "";
+      }, 60000); 
 
-      fetchUnratedImages(); // Refresh the unrated images list
+      fetchUnratedImages();
     } else {
       uploadMessage.textContent = data.error;
-      uploadButton.disabled = false; // Re-enable if an error occurred
+      uploadButton.disabled = false;
     }
   })
   .catch(error => {
