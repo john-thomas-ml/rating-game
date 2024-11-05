@@ -116,6 +116,11 @@ function updateRankingList(imagesList = []) {
 document.getElementById("uploadForm").addEventListener("submit", function (e) {
   e.preventDefault();
   const formData = new FormData(this);
+  const uploadButton = document.querySelector("#uploadForm button[type='submit']");
+  const uploadMessage = document.getElementById("uploadMessage");
+
+  uploadButton.disabled = true; // Disable the button initially
+  uploadMessage.textContent = "Uploading...";
 
   fetch('/upload', {
     method: 'POST',
@@ -127,14 +132,23 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
   })
   .then(data => {
     if (data.message) {
-      document.getElementById("uploadMessage").textContent = "Image uploaded successfully!";
-      fetchUnratedImages();
+      uploadMessage.textContent = "Image uploaded successfully! Please wait a minute before uploading again.";
+
+      // Start a 60-second cooldown timer
+      setTimeout(() => {
+        uploadButton.disabled = false;
+        uploadMessage.textContent = ""; // Clear the message after cooldown
+      }, 60000); // Cooldown period in milliseconds (60 seconds)
+
+      fetchUnratedImages(); // Refresh the unrated images list
     } else {
-      document.getElementById("uploadMessage").textContent = data.error;
+      uploadMessage.textContent = data.error;
+      uploadButton.disabled = false; // Re-enable if an error occurred
     }
   })
   .catch(error => {
     console.error('Error uploading image:', error);
-    document.getElementById("uploadMessage").textContent = "Error: Failed to upload image.";
+    uploadMessage.textContent = "Error: Failed to upload image.";
+    uploadButton.disabled = false;
   });
 });
