@@ -1,11 +1,13 @@
 import sys
 import logging
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify, make_response, session
 from pymongo import MongoClient, errors
 from bson import ObjectId, binary
 from time import sleep
+import uuid
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -35,8 +37,11 @@ def format_image(image):
         "rating_count": image.get("rating_count", 0)
     }
 
-def get_client_ip():
-    return request.remote_addr
+def get_or_create_session_id():
+    # Generate a session ID if it doesn't exist
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    return session['session_id']
 
 @app.route('/')
 def index():
@@ -86,7 +91,7 @@ def rate_image():
     data = request.json
     image_id = data.get('image_id')
     rating = data.get('rating')
-    user_ip = get_client_ip()
+    session_id = get_or_create_session_id()
 
     if image_id is None or rating is None:
         logging.warning("Rating failed: Missing image ID or rating.")
@@ -105,12 +110,12 @@ def rate_image():
             )
             
             user_ratings_collection.update_one(
-                {"ip": user_ip},
+                {"session_id": session_id},
                 {"$addToSet": {"rated_images": ObjectId(image_id)}},
                 upsert=True
             )
 
-            logging.info(f"User with IP '{user_ip}' rated image ID '{image_id}' successfully with rating {rating}.")
+            logging.info(f"User with session ID '{session_id}' rated image ID '{image_id}' successfully with rating {rating}.")
             return jsonify({"message": "Rating submitted successfully!"})
         
         logging.warning(f"Rating failed: Image with ID '{image_id}' not found.")
@@ -146,8 +151,8 @@ def serve_image(image_id):
 
 @app.route('/unrated-images', methods=['GET'])
 def get_unrated_images():
-    user_ip = get_client_ip()
-    rated_images_doc = user_ratings_collection.find_one({"ip": user_ip})
+    session_id = get_or_create_session_id()
+    rated_images_doc = user_ratings_collection.find_one({"session_id": session_id})
     rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
 
     unrated_images = images_collection.find({"_id": {"$nin": rated_image_ids}})
