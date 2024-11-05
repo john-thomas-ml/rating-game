@@ -32,7 +32,7 @@ function loadCurrentImage() {
     ratingMessage.textContent = "You already rated this image!";
     ratingButtons.forEach(button => button.disabled = true);
   } else {
-    ratingMessage.textContent = "";
+    ratingMessage.textContent = ""; 
     ratingButtons.forEach(button => button.disabled = false);
   }
 }
@@ -74,8 +74,11 @@ function rateImage(rating) {
 
       images[currentIndex].isRated = true;
 
-      const ratingButtons = document.querySelectorAll(".rating-buttons button:not(.skip-button)");
-      ratingButtons.forEach(button => button.disabled = true);
+      currentIndex++;
+      if (currentIndex >= images.length) {
+        currentIndex = 0; 
+      }
+      loadCurrentImage();
 
       fetchTopRatedImages();
     } else {
