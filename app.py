@@ -1,8 +1,8 @@
 import sys
 import logging
 from flask import Flask, render_template, request, jsonify, make_response, session
-from pymongo import MongoClient, errors, ASCENDING, DESCENDING
-from bson import ObjectId, binary
+from pymongo import MongoClient, errors, DESCENDING
+from bson import ObjectId
 from gridfs import GridFS
 from time import sleep
 import uuid
@@ -10,6 +10,8 @@ import mimetypes
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
+
+PASSWORD = 'hate'  # Set your secure password here for deletion
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -26,12 +28,14 @@ def get_mongo_client(uri, retries=5, delay=2):
     logging.error("Failed to connect to MongoDB after multiple attempts.")
     raise errors.ConnectionFailure("Could not connect to MongoDB.")
 
+# Initialize MongoDB connection and GridFS
 client = get_mongo_client("mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
 db = client["rating_game_db"]
 images_collection = db["images"]
 user_ratings_collection = db["user_ratings"]
 fs = GridFS(db)
 
+# Index frequently queried fields for better performance
 images_collection.create_index([("rating", DESCENDING)])
 
 def format_image(image, is_rated=False):
@@ -52,12 +56,11 @@ def get_or_create_session_id():
 def index():
     try:
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
-        image = top_rated_images[0] if top_rated_images else None 
+        image = top_rated_images[0] if top_rated_images else None
         return render_template("index.html", image=image, top_rated_images=top_rated_images)
     except Exception as e:
         logging.error(f"Error fetching images for index page: {e}")
         return render_template("index.html", error="Unable to load images at the moment.", image=None)
-
 
 @app.route('/top-rated', methods=['GET'])
 def get_top_rated():
@@ -79,7 +82,6 @@ def upload_image():
             logging.warning("Image upload failed: Missing image name or file.")
             return jsonify({"error": "Image name and file are required"}), 400
 
-        # Save image to GridFS
         image_id = fs.put(image_file, filename=image_name)
         image_doc = {
             "name": image_name,
@@ -132,6 +134,41 @@ def rate_image():
         logging.error(f"Error rating image: {e}")
         return jsonify({"error": "Failed to submit rating"}), 500
 
+@app.route('/delete-image', methods=['POST'])
+def delete_image():
+    data = request.json
+    image_id = data.get('image_id')
+    password = data.get('password')
+
+    if password != PASSWORD:
+        return jsonify({"error": "Incorrect password"}), 403
+
+    try:
+        image = images_collection.find_one({"_id": ObjectId(image_id)})
+        if not image:
+            return jsonify({"error": "Image not found"}), 404
+
+        # Delete the image file from GridFS
+        if 'image_file_id' in image:
+            fs.delete(image["image_file_id"])
+
+        # Remove the image document from the `images` collection
+        images_collection.delete_one({"_id": ObjectId(image_id)})
+
+        # Remove references from the `user_ratings_collection`
+        user_ratings_collection.update_many(
+            {},
+            {"$pull": {"rated_images": ObjectId(image_id)}}
+        )
+
+        return jsonify({"message": "Image deleted successfully"})
+    except Exception as e:
+        logging.error(f"Error deleting image: {e}")
+        return jsonify({"error": "Failed to delete image"}), 500
+
+
+
+
 @app.route('/all-ratings')
 def all_ratings():
     try:
@@ -166,6 +203,7 @@ def get_unrated_images():
     rated_images_doc = user_ratings_collection.find_one({"session_id": session_id})
     rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
 
+    # Pagination parameters
     page = int(request.args.get("page", 1))
     limit = int(request.args.get("limit", 10))
     skip = (page - 1) * limit

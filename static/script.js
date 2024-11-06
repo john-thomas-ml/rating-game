@@ -12,13 +12,13 @@ function loadCurrentImage() {
   const ratingButtons = document.querySelectorAll(".rating-buttons button:not(.skip-button)");
 
   if (!imageTitle || !mainImage || !ratingMessage) {
-    console.error("Required elements with IDs 'imageTitle', 'mainImage', or 'ratingMessage' are missing in the HTML.");
+    console.error("Required elements are missing in the HTML.");
     return;
   }
 
   if (images.length === 0) {
     imageTitle.textContent = "No images available";
-    mainImage.style.display = "none"; 
+    mainImage.style.display = "none";
     ratingMessage.textContent = "You've rated all available images!";
     return;
   }
@@ -27,27 +27,25 @@ function loadCurrentImage() {
   imageTitle.textContent = currentImage.name;
   mainImage.style.display = "block";
   mainImage.src = `/image/${currentImage.id}`;
+  mainImage.setAttribute("data-image-id", currentImage.id); // Ensure ID is updated correctly
 
   if (currentImage.isRated) {
     ratingMessage.textContent = "You already rated this image!";
     ratingButtons.forEach(button => button.disabled = true);
   } else {
-    ratingMessage.textContent = ""; 
+    ratingMessage.textContent = "";
     ratingButtons.forEach(button => button.disabled = false);
   }
 }
 
 function fetchUnratedImages() {
   fetch('/unrated-images')
-    .then(response => {
-      if (!response.ok) throw new Error('Network response was not ok');
-      return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
       images = data;
       currentIndex = 0;
       loadCurrentImage();
-      fetchTopRatedImages(); 
+      fetchTopRatedImages();
     })
     .catch(error => console.error('Error fetching unrated images:', error));
 }
@@ -64,26 +62,18 @@ function rateImage(rating) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image_id: currentImage.id, rating: rating })
   })
-  .then(response => {
-    if (!response.ok) throw new Error('Failed to submit rating');
-    return response.json();
-  })
+  .then(response => response.json())
   .then(data => {
     if (data.message) {
       document.getElementById("ratingMessage").textContent = `You rated this image a ${rating}.`;
-
       images[currentIndex].isRated = true;
 
-      currentIndex++;
-      if (currentIndex >= images.length) {
-        currentIndex = 0; 
-      }
+      // Move to the next image after rating
+      currentIndex = (currentIndex + 1) % images.length;
       loadCurrentImage();
-
       fetchTopRatedImages();
     } else {
-      console.error(data.error);
-      document.getElementById("ratingMessage").textContent = "Error: " + data.error;
+      document.getElementById("ratingMessage").textContent = data.error;
     }
   })
   .catch(error => console.error('Error submitting rating:', error));
@@ -95,19 +85,61 @@ function skipImage() {
     return;
   }
 
-  currentIndex++;
-  if (currentIndex >= images.length) {
-    currentIndex = 0;
-  }
+  // Move to the next image after skipping
+  currentIndex = (currentIndex + 1) % images.length;
   loadCurrentImage();
+}
+
+function deleteImage() {
+  if (images.length === 0) {
+    document.getElementById("deleteMessage").textContent = "No images available to delete.";
+    return;
+  }
+
+  const password = document.getElementById("deletePassword").value;
+  const mainImage = document.getElementById("mainImage");
+  const imageId = mainImage.getAttribute('data-image-id'); // Ensure the current image ID is fetched directly
+
+  // Log the image ID being sent for deletion
+  console.log(`Deleting current image with ID: ${imageId}`);
+
+  fetch('/delete-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image_id: imageId, password: password })
+  })
+  .then(response => response.json())
+  .then(data => {
+    const deleteMessage = document.getElementById('deleteMessage');
+    if (data.message) {
+      deleteMessage.textContent = data.message;
+      deleteMessage.style.color = 'green';
+
+      // Remove the deleted image from the array and adjust currentIndex
+      images = images.filter(image => image.id !== imageId);
+      
+      // Reset currentIndex if it exceeds the length of images array
+      if (currentIndex >= images.length) {
+        currentIndex = 0;
+      }
+
+      loadCurrentImage();
+      fetchTopRatedImages();
+    } else {
+      deleteMessage.textContent = data.error || 'Failed to delete image';
+      deleteMessage.style.color = 'red';
+    }
+  })
+  .catch(error => {
+    console.error('Error deleting image:', error);
+    document.getElementById("deleteMessage").textContent = "Error: Failed to delete image.";
+    document.getElementById("deleteMessage").style.color = 'red';
+  });
 }
 
 function fetchTopRatedImages() {
   fetch('/top-rated')
-    .then(response => {
-      if (!response.ok) throw new Error('Network response was not ok');
-      return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
       updateRankingList(data);
     })
@@ -145,14 +177,10 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
     method: 'POST',
     body: formData
   })
-  .then(response => {
-    if (!response.ok) throw new Error('Failed to upload image');
-    return response.json();
-  })
+  .then(response => response.json())
   .then(data => {
     if (data.message) {
-      uploadMessage.textContent = "Image uploaded successfully! Please wait a minute before uploading again.";
-
+      uploadMessage.textContent = "Image uploaded successfully!";
       setTimeout(() => {
         uploadButton.disabled = false;
         uploadMessage.textContent = "";

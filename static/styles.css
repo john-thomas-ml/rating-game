@@ -244,3 +244,45 @@ ul {
   background-color: #ff3b2e;
   transform: scale(1.1);
 }
+
+/* Delete Feature Styles */
+.delete-section {
+  position: absolute;
+  bottom: 10px; /* Changed from top to bottom */
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+
+.delete-section input[type="text"] {
+  width: 120px;
+  margin-top: 8px;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1c1c1e;
+  color: #f8f8f8;
+  margin-bottom: 8px;
+}
+
+.delete-section button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background: linear-gradient(to bottom right, #ff6f61, #ff3b2e);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.2s;
+}
+
+.delete-section button:hover {
+  background-color: #ff3b2e;
+}
+
+#deleteMessage {
+  font-size: 14px;
+  margin-top: 5px;
+}

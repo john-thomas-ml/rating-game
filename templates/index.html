@@ -28,7 +28,7 @@
       </h1>
       
       {% if not no_images %}
-        <img id="mainImage" src="/image/{{ image._id }}" alt="Rating Image">
+        <img id="mainImage" src="/image/{{ image._id }}" alt="Rating Image" data-image-id="{{ image._id }}">
       {% else %}
         <img id="mainImage" style="display: none;" alt="Rating Image">
       {% endif %}
@@ -66,8 +66,51 @@
       </ul>
       <button onclick="window.location.href='/all-ratings'">See All</button>
     </div>
+
+    <!-- Delete Section -->
+    <div class="delete-section">
+      <h2>Delete Image</h2>
+      <input type="password" id="deletePassword" placeholder="Enter Password" />
+      <button class="delete-button" onclick="deleteImage()">Delete</button>
+      <p id="deleteMessage"></p>
+    </div>
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script>
+    function deleteImage() {
+      const password = document.getElementById('deletePassword').value;
+      const mainImage = document.getElementById('mainImage');
+      const imageId = mainImage.getAttribute('data-image-id'); // Get image ID directly from the displayed image
+
+      fetch('/delete-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          image_id: imageId,
+          password: password
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        const deleteMessage = document.getElementById('deleteMessage');
+        if (data.message) {
+          deleteMessage.textContent = data.message;
+          deleteMessage.style.color = 'green';
+          // Optionally, refresh the page after deletion
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          deleteMessage.textContent = data.error || 'Failed to delete image';
+          deleteMessage.style.color = 'red';
+        }
+      })
+      .catch(error => {
+        document.getElementById('deleteMessage').textContent = 'Error: ' + error.message;
+        document.getElementById('deleteMessage').style.color = 'red';
+      });
+    }
+  </script>
 </body>
 </html>
