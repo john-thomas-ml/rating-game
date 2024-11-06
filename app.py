@@ -6,34 +6,31 @@ from bson import ObjectId, binary
 from time import sleep
 import uuid
 import mimetypes
+import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = os.getenv("SECRET_KEY", "your_secret_key_here")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Initialize MongoDB client as None to create in each worker
-mongo_client = None
+# MongoDB URI from environment variables
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://<username>:<password>@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
 
 def get_mongo_client(uri, retries=5, delay=2):
-    global mongo_client
-    if mongo_client is None:
-        for attempt in range(1, retries + 1):
-            try:
-                client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-                client.admin.command('ping')
-                logging.info("Connected to MongoDB successfully.")
-                mongo_client = client
-                return client
-            except errors.ConnectionFailure as e:
-                logging.warning(f"MongoDB connection failed on attempt {attempt}: {e}. Retrying in {delay} seconds...")
-                sleep(delay)
-        logging.error("Failed to connect to MongoDB after multiple attempts.")
-        raise errors.ConnectionFailure("Could not connect to MongoDB.")
-    return mongo_client
+    for attempt in range(1, retries + 1):
+        try:
+            client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+            client.admin.command('ping')
+            logging.info("Connected to MongoDB successfully.")
+            return client
+        except errors.ConnectionFailure as e:
+            logging.warning(f"MongoDB connection failed on attempt {attempt}: {e}. Retrying in {delay} seconds...")
+            sleep(delay)
+    logging.error("Failed to connect to MongoDB after multiple attempts.")
+    raise errors.ConnectionFailure("Could not connect to MongoDB.")
 
 def get_db():
-    client = get_mongo_client("mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
+    client = get_mongo_client(MONGODB_URI)
     return client["rating_game_db"]
 
 def format_image(image, is_rated=False):
@@ -57,7 +54,6 @@ def index():
         images_collection = db["images"]
         image = images_collection.find_one()
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
-        
         return render_template("index.html", image=image, top_rated_images=top_rated_images, no_images=not bool(image))
     except Exception as e:
         logging.error(f"Error fetching images for index page: {e}")
@@ -89,7 +85,6 @@ def upload_image():
             logging.warning("Image upload failed: Missing image name or file.")
             return jsonify({"error": "Image name and file are required"}), 400
 
-        # Ensure the file is stored as binary data
         image_data = binary.Binary(image_file.read())
         image_doc = {
             "name": image_name,
