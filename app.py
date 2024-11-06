@@ -12,23 +12,29 @@ app.secret_key = 'your_secret_key_here'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_mongo_client(uri, retries=5, delay=2):
-    for attempt in range(1, retries + 1):
-        try:
-            client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-            client.admin.command('ping')
-            logging.info("Connected to MongoDB successfully.")
-            return client
-        except errors.ConnectionFailure as e:
-            logging.warning(f"MongoDB connection failed on attempt {attempt}: {e}. Retrying in {delay} seconds...")
-            sleep(delay)
-    logging.error("Failed to connect to MongoDB after multiple attempts.")
-    raise errors.ConnectionFailure("Could not connect to MongoDB.")
+# Initialize MongoDB client as None to create in each worker
+mongo_client = None
 
-client = get_mongo_client("mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
-db = client["rating_game_db"]
-images_collection = db["images"]
-user_ratings_collection = db["user_ratings"]
+def get_mongo_client(uri, retries=5, delay=2):
+    global mongo_client
+    if mongo_client is None:
+        for attempt in range(1, retries + 1):
+            try:
+                client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+                client.admin.command('ping')
+                logging.info("Connected to MongoDB successfully.")
+                mongo_client = client
+                return client
+            except errors.ConnectionFailure as e:
+                logging.warning(f"MongoDB connection failed on attempt {attempt}: {e}. Retrying in {delay} seconds...")
+                sleep(delay)
+        logging.error("Failed to connect to MongoDB after multiple attempts.")
+        raise errors.ConnectionFailure("Could not connect to MongoDB.")
+    return mongo_client
+
+def get_db():
+    client = get_mongo_client("mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
+    return client["rating_game_db"]
 
 def format_image(image, is_rated=False):
     return {
@@ -47,6 +53,8 @@ def get_or_create_session_id():
 @app.route('/')
 def index():
     try:
+        db = get_db()
+        images_collection = db["images"]
         image = images_collection.find_one()
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
         
@@ -57,15 +65,23 @@ def index():
 
 @app.route('/top-rated', methods=['GET'])
 def get_top_rated():
-    top_images = list(images_collection.find().sort("rating", -1).limit(10))
-    if not top_images:
-        return jsonify([]) 
-    formatted_images = [format_image(img) for img in top_images]
-    return jsonify(formatted_images)
+    try:
+        db = get_db()
+        images_collection = db["images"]
+        top_images = list(images_collection.find().sort("rating", -1).limit(10))
+        if not top_images:
+            return jsonify([]) 
+        formatted_images = [format_image(img) for img in top_images]
+        return jsonify(formatted_images)
+    except Exception as e:
+        logging.error(f"Error fetching top-rated images: {e}")
+        return jsonify({"error": "Failed to fetch top-rated images"}), 500
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
     try:
+        db = get_db()
+        images_collection = db["images"]
         image_name = request.form.get('imageName')
         image_file = request.files.get('imageFile')
 
@@ -100,6 +116,10 @@ def rate_image():
         return jsonify({"error": "Image ID and rating are required"}), 400
 
     try:
+        db = get_db()
+        images_collection = db["images"]
+        user_ratings_collection = db["user_ratings"]
+        
         image = images_collection.find_one({"_id": ObjectId(image_id)})
         if image:
             new_rating_count = image["rating_count"] + 1
@@ -129,6 +149,8 @@ def rate_image():
 @app.route('/all-ratings')
 def all_ratings():
     try:
+        db = get_db()
+        images_collection = db["images"]
         all_images = images_collection.find().sort("rating", -1)
         formatted_images = [format_image(img) for img in all_images]
         return render_template("all_ratings.html", images=formatted_images)
@@ -139,11 +161,11 @@ def all_ratings():
 @app.route('/image/<image_id>')
 def serve_image(image_id):
     try:
-        logging.info(f"Fetching image with ID: {image_id}")
+        db = get_db()
+        images_collection = db["images"]
         image = images_collection.find_one({"_id": ObjectId(image_id)})
         if image and 'image_data' in image:
             image_data = image["image_data"]
-            # Determine MIME type based on content (assuming JPEG or PNG as common types)
             mime_type, _ = mimetypes.guess_type(image["name"])
             if not mime_type:
                 mime_type = 'image/jpeg'  # Default to JPEG if unknown
@@ -159,17 +181,25 @@ def serve_image(image_id):
 @app.route('/unrated-images', methods=['GET'])
 def get_unrated_images():
     session_id = get_or_create_session_id()
-    rated_images_doc = user_ratings_collection.find_one({"session_id": session_id})
-    rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
+    try:
+        db = get_db()
+        images_collection = db["images"]
+        user_ratings_collection = db["user_ratings"]
+        
+        rated_images_doc = user_ratings_collection.find_one({"session_id": session_id})
+        rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
 
-    all_images = images_collection.find()
-    images_list = []
+        all_images = images_collection.find()
+        images_list = []
 
-    for image in all_images:
-        is_rated = image["_id"] in rated_image_ids
-        images_list.append(format_image(image, is_rated))
+        for image in all_images:
+            is_rated = image["_id"] in rated_image_ids
+            images_list.append(format_image(image, is_rated))
 
-    return jsonify(images_list)
+        return jsonify(images_list)
+    except Exception as e:
+        logging.error(f"Error fetching unrated images: {e}")
+        return jsonify({"error": "Failed to fetch unrated images"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
