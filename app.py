@@ -5,6 +5,7 @@ from pymongo import MongoClient, errors
 from bson import ObjectId, binary
 from time import sleep
 import uuid
+import mimetypes
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -72,6 +73,7 @@ def upload_image():
             logging.warning("Image upload failed: Missing image name or file.")
             return jsonify({"error": "Image name and file are required"}), 400
 
+        # Ensure the file is stored as binary data
         image_data = binary.Binary(image_file.read())
         image_doc = {
             "name": image_name,
@@ -141,8 +143,13 @@ def serve_image(image_id):
         image = images_collection.find_one({"_id": ObjectId(image_id)})
         if image and 'image_data' in image:
             image_data = image["image_data"]
+            # Determine MIME type based on content (assuming JPEG or PNG as common types)
+            mime_type, _ = mimetypes.guess_type(image["name"])
+            if not mime_type:
+                mime_type = 'image/jpeg'  # Default to JPEG if unknown
+
             response = make_response(image_data)
-            response.headers.set('Content-Type', 'image/jpeg')
+            response.headers.set('Content-Type', mime_type)
             return response
         logging.warning(f"Image with ID '{image_id}' not found.")
     except Exception as e:
