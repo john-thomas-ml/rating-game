@@ -1,8 +1,9 @@
 import sys
 import logging
 from flask import Flask, render_template, request, jsonify, make_response, session
-from pymongo import MongoClient, errors
+from pymongo import MongoClient, errors, ASCENDING, DESCENDING
 from bson import ObjectId, binary
+from gridfs import GridFS
 from time import sleep
 import uuid
 import mimetypes
@@ -29,6 +30,9 @@ client = get_mongo_client("mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?r
 db = client["rating_game_db"]
 images_collection = db["images"]
 user_ratings_collection = db["user_ratings"]
+fs = GridFS(db)
+
+images_collection.create_index([("rating", DESCENDING)])
 
 def format_image(image, is_rated=False):
     return {
@@ -47,21 +51,23 @@ def get_or_create_session_id():
 @app.route('/')
 def index():
     try:
-        image = images_collection.find_one()
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
-        
-        return render_template("index.html", image=image, top_rated_images=top_rated_images, no_images=not bool(image))
+        image = top_rated_images[0] if top_rated_images else None 
+        return render_template("index.html", image=image, top_rated_images=top_rated_images)
     except Exception as e:
         logging.error(f"Error fetching images for index page: {e}")
-        return render_template("index.html", error="Unable to load images at the moment.", no_images=True)
+        return render_template("index.html", error="Unable to load images at the moment.", image=None)
+
 
 @app.route('/top-rated', methods=['GET'])
 def get_top_rated():
-    top_images = list(images_collection.find().sort("rating", -1).limit(10))
-    if not top_images:
-        return jsonify([]) 
-    formatted_images = [format_image(img) for img in top_images]
-    return jsonify(formatted_images)
+    try:
+        top_images = list(images_collection.find().sort("rating", -1).limit(10))
+        formatted_images = [format_image(img) for img in top_images]
+        return jsonify(formatted_images)
+    except Exception as e:
+        logging.error(f"Error fetching top-rated images: {e}")
+        return jsonify({"error": "Failed to fetch top-rated images"}), 500
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -73,11 +79,11 @@ def upload_image():
             logging.warning("Image upload failed: Missing image name or file.")
             return jsonify({"error": "Image name and file are required"}), 400
 
-        # Ensure the file is stored as binary data
-        image_data = binary.Binary(image_file.read())
+        # Save image to GridFS
+        image_id = fs.put(image_file, filename=image_name)
         image_doc = {
             "name": image_name,
-            "image_data": image_data,
+            "image_file_id": image_id,
             "rating": 0,
             "rating_count": 0
         }
@@ -141,13 +147,11 @@ def serve_image(image_id):
     try:
         logging.info(f"Fetching image with ID: {image_id}")
         image = images_collection.find_one({"_id": ObjectId(image_id)})
-        if image and 'image_data' in image:
-            image_data = image["image_data"]
-            # Determine MIME type based on content (assuming JPEG or PNG as common types)
+        if image and 'image_file_id' in image:
+            image_data = fs.get(image["image_file_id"]).read()
             mime_type, _ = mimetypes.guess_type(image["name"])
             if not mime_type:
-                mime_type = 'image/jpeg'  # Default to JPEG if unknown
-
+                mime_type = 'image/jpeg'
             response = make_response(image_data)
             response.headers.set('Content-Type', mime_type)
             return response
@@ -162,12 +166,12 @@ def get_unrated_images():
     rated_images_doc = user_ratings_collection.find_one({"session_id": session_id})
     rated_image_ids = rated_images_doc["rated_images"] if rated_images_doc else []
 
-    all_images = images_collection.find()
-    images_list = []
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 10))
+    skip = (page - 1) * limit
 
-    for image in all_images:
-        is_rated = image["_id"] in rated_image_ids
-        images_list.append(format_image(image, is_rated))
+    all_images = images_collection.find().skip(skip).limit(limit)
+    images_list = [format_image(image, image["_id"] in rated_image_ids) for image in all_images]
 
     return jsonify(images_list)
 
