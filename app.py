@@ -6,21 +6,18 @@ from bson import ObjectId, binary
 from time import sleep
 import uuid
 import mimetypes
-import os
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "your_secret_key_here")
+app.secret_key = 'your_secret_key_here'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# MongoDB URI from environment variables
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://<username>:<password>@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate")
-
-def get_mongo_client(uri, retries=5, delay=2):
+# Lazy initialization for MongoDB client to avoid issues with forking in Gunicorn
+def get_mongo_client(uri="mongodb+srv://22cs260:apple@rate.ycl6p.mongodb.net/?retryWrites=true&w=majority&appName=Rate", retries=5, delay=2):
     for attempt in range(1, retries + 1):
         try:
             client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-            client.admin.command('ping')
+            client.admin.command('ping')  # Check connection
             logging.info("Connected to MongoDB successfully.")
             return client
         except errors.ConnectionFailure as e:
@@ -29,8 +26,9 @@ def get_mongo_client(uri, retries=5, delay=2):
     logging.error("Failed to connect to MongoDB after multiple attempts.")
     raise errors.ConnectionFailure("Could not connect to MongoDB.")
 
+# Get MongoDB database
 def get_db():
-    client = get_mongo_client(MONGODB_URI)
+    client = get_mongo_client()
     return client["rating_game_db"]
 
 def format_image(image, is_rated=False):
@@ -54,6 +52,7 @@ def index():
         images_collection = db["images"]
         image = images_collection.find_one()
         top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
+        
         return render_template("index.html", image=image, top_rated_images=top_rated_images, no_images=not bool(image))
     except Exception as e:
         logging.error(f"Error fetching images for index page: {e}")
@@ -163,7 +162,7 @@ def serve_image(image_id):
             image_data = image["image_data"]
             mime_type, _ = mimetypes.guess_type(image["name"])
             if not mime_type:
-                mime_type = 'image/jpeg'  # Default to JPEG if unknown
+                mime_type = 'image/jpeg'
 
             response = make_response(image_data)
             response.headers.set('Content-Type', mime_type)
