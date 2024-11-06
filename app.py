@@ -142,7 +142,7 @@ def serve_image(image_id):
         if image and 'image_data' in image:
             image_data = image["image_data"]
             response = make_response(image_data)
-            response.headers.set('Content-Type', 'image/jpeg')
+            response.headers.set('Content-Type', 'image/jpeg')  # Ensure the correct content type
             return response
         logging.warning(f"Image with ID '{image_id}' not found.")
     except Exception as e:
