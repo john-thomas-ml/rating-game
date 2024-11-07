@@ -129,6 +129,7 @@ h1, h2 {
   font-weight: bold;
 }
 
+/* Button and Ranking List Styles */
 button[type="submit"],
 .ranking-section button {
   padding: 10px 15px;
@@ -165,12 +166,19 @@ ul {
   border: 2px solid #ff6f61;
 }
 
+/* Remove inner box and background for the all-ratings container */
 .all-ratings-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 100vh;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 20px;
+  max-height: 80vh; 
+  overflow-y: auto;
+  background: none; /* Remove background */
+  box-shadow: none; /* Remove shadow */
+  border-radius: 0; /* Remove rounded corners */
 }
 
 .all-ratings-title {
@@ -180,6 +188,7 @@ ul {
   margin-bottom: 20px;
 }
 
+/* Ranking Section (Unchanged) */
 .ranking-section {
   width: 350px;
   padding: 20px;
@@ -190,6 +199,7 @@ ul {
   max-height: 350px;
 }
 
+/* Back Button */
 .back-button {
   text-decoration: none;
   padding: 10px 20px;
@@ -206,12 +216,15 @@ ul {
   background-color: #ff3b2e;
 }
 
+/* Remove inner box styling for the all-ratings list */
 .all-ratings-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  width: 100%;
 }
 
+/* All Ratings List Items */
 .all-ratings-list li {
   display: flex;
   align-items: center;
@@ -249,13 +262,12 @@ ul {
 /* Delete Feature Styles */
 .delete-section {
   position: absolute;
-  bottom: 10px; /* Changed from top to bottom */
+  bottom: 10px;
   left: 10px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 }
-
 
 .delete-section input[type="text"] {
   width: 120px;
@@ -286,4 +298,12 @@ ul {
 #deleteMessage {
   font-size: 14px;
   margin-top: 5px;
+}
+
+/* Specific styling for the All Ratings page to remove background */
+.ranking-section.no-background {
+  background-color: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0; /* Optional: Adjust padding if needed */
 }
