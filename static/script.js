@@ -138,13 +138,14 @@ function deleteImage() {
 }
 
 function fetchTopRatedImages() {
-  fetch('/top-rated')
-    .then(response => response.json())
-    .then(data => {
-      updateRankingList(data);
-    })
-    .catch(error => console.error('Error fetching top-rated images:', error));
+  fetch('/top-rated?limit=5')  // Add a limit parameter to restrict to top 5
+      .then(response => response.json())
+      .then(data => {
+          updateRankingList(data);
+      })
+      .catch(error => console.error('Error fetching top-rated images:', error));
 }
+
 
 function updateRankingList(imagesList = []) {
   const rankingList = document.getElementById("rankingList");
