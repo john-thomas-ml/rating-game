@@ -65,7 +65,7 @@ def index():
 @app.route('/top-rated', methods=['GET'])
 def get_top_rated():
     try:
-        top_images = list(images_collection.find().sort("rating", -1).limit(10))
+        top_images = list(images_collection.find().sort("rating", -1).limit(5))
         formatted_images = [format_image(img) for img in top_images]
         return jsonify(formatted_images)
     except Exception as e:
