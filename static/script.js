@@ -3,6 +3,7 @@ let currentIndex = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
   fetchUnratedImages();
+  fetchTopRatedImages();  // Load top-rated images initially
 });
 
 function loadCurrentImage() {
@@ -45,7 +46,6 @@ function fetchUnratedImages() {
       images = data;
       currentIndex = 0;
       loadCurrentImage();
-      fetchTopRatedImages();
     })
     .catch(error => console.error('Error fetching unrated images:', error));
 }
@@ -71,7 +71,7 @@ function rateImage(rating) {
       // Move to the next image after rating
       currentIndex = (currentIndex + 1) % images.length;
       loadCurrentImage();
-      fetchTopRatedImages();
+      fetchTopRatedImages();  // Refresh top-rated images
     } else {
       document.getElementById("ratingMessage").textContent = data.error;
     }
@@ -124,7 +124,7 @@ function deleteImage() {
       }
 
       loadCurrentImage();
-      fetchTopRatedImages();
+      fetchTopRatedImages();  // Refresh top-rated images after deletion
     } else {
       deleteMessage.textContent = data.error || 'Failed to delete image';
       deleteMessage.style.color = 'red';
@@ -138,14 +138,13 @@ function deleteImage() {
 }
 
 function fetchTopRatedImages() {
-  fetch('/top-rated?limit=5')  // Add a limit parameter to restrict to top 5
-      .then(response => response.json())
-      .then(data => {
-          updateRankingList(data);
-      })
-      .catch(error => console.error('Error fetching top-rated images:', error));
+  fetch('/top-rated?limit=5')  // Fetch only top 5 images
+    .then(response => response.json())
+    .then(data => {
+      updateRankingList(data);
+    })
+    .catch(error => console.error('Error fetching top-rated images:', error));
 }
-
 
 function updateRankingList(imagesList = []) {
   const rankingList = document.getElementById("rankingList");
@@ -188,6 +187,7 @@ document.getElementById("uploadForm").addEventListener("submit", function (e) {
       }, 60000);
 
       fetchUnratedImages();
+      fetchTopRatedImages();  // Update top-rated images after uploading new image
     } else {
       uploadMessage.textContent = data.error;
       uploadButton.disabled = false;

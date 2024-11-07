@@ -55,7 +55,8 @@
     <div class="ranking-section">
       <h2>Highest Ratings</h2>
       <ul id="rankingList">
-        {% for image in top_rated_images %}
+        <!-- Display only the top 5 highest-rated images -->
+        {% for image in top_rated_images[:5] %}
           <li>
             <img src="/image/{{ image._id }}" alt="{{ image.name }}" class="thumbnail">
             <span>{{ image.name }} - {{ image.rating | round(1) }}</span>

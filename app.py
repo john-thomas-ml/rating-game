@@ -52,20 +52,22 @@ def get_or_create_session_id():
         session['session_id'] = str(uuid.uuid4())
     return session['session_id']
 
+# Updated to limit top-rated images to 5 only
 @app.route('/')
 def index():
     try:
-        top_rated_images = list(images_collection.find().sort("rating", -1).limit(10))
+        top_rated_images = list(images_collection.find().sort("rating", -1).limit(5))  # Limit to 5 images here
         image = top_rated_images[0] if top_rated_images else None
         return render_template("index.html", image=image, top_rated_images=top_rated_images)
     except Exception as e:
         logging.error(f"Error fetching images for index page: {e}")
         return render_template("index.html", error="Unable to load images at the moment.", image=None)
 
+# Adjusted to consistently fetch only the top 5 rated images
 @app.route('/top-rated', methods=['GET'])
 def get_top_rated():
     try:
-        top_images = list(images_collection.find().sort("rating", -1).limit(5))
+        top_images = list(images_collection.find().sort("rating", -1).limit(5))  # Limit to 5 images here as well
         formatted_images = [format_image(img) for img in top_images]
         return jsonify(formatted_images)
     except Exception as e:
@@ -165,9 +167,6 @@ def delete_image():
     except Exception as e:
         logging.error(f"Error deleting image: {e}")
         return jsonify({"error": "Failed to delete image"}), 500
-
-
-
 
 @app.route('/all-ratings')
 def all_ratings():
